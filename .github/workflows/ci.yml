@@ -37,6 +37,9 @@ jobs:
         run: npm install
         if: steps.cache-deps.outputs.cache-hit != 'true'
 
+      - name: Ensure Node Modules in PATH
+        run: echo "::add-path::$(npm bin)"
+
   lint:
     name: "🔍 Run Lint"
     runs-on: ubuntu-latest
@@ -47,11 +50,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Use Cached Node Modules
-        run: npm ci --prefer-offline
-        if: ${{ needs.setup.outputs.cache-hit == 'true' }}
+        run: npm ci --prefer-offline || npm install
 
       - name: Run Lint
-        run: npm run lint
+        run: npx biome check src/
 
   test:
     name: "🧪 Run Tests"
@@ -63,8 +65,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Use Cached Node Modules
-        run: npm ci --prefer-offline
-        if: ${{ needs.setup.outputs.cache-hit == 'true' }}
+        run: npm ci --prefer-offline || npm install
 
       - name: Run Tests
-        run: npm run test test
+        run: npm run test
