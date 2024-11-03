@@ -9,28 +9,62 @@ on:
       - main
 
 jobs:
-  build-and-test:
+  setup:
+    name: "🔧 Setup and Cache Dependencies"
     runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache-deps.outputs.cache-hit }}
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js (use Node.js 22)
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22" # Use Node.js 22
+          node-version: "22"
 
-      # Step 3: Install dependencies
+      - name: Cache Node Modules
+        id: cache-deps
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
       - name: Install Dependencies
         run: npm install
+        if: steps.cache-deps.outputs.cache-hit != 'true'
 
-      # Step 4: Run linting
+  lint:
+    name: "🔍 Run Lint"
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Use Cached Node Modules
+        run: npm ci --prefer-offline
+        if: ${{ needs.setup.outputs.cache-hit == 'true' }}
+
       - name: Run Lint
         run: npm run lint
 
-      # Step 5: Run tests
+  test:
+    name: "🧪 Run Tests"
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Use Cached Node Modules
+        run: npm ci --prefer-offline
+        if: ${{ needs.setup.outputs.cache-hit == 'true' }}
+
       - name: Run Tests
-        run: npm run test
+        run: npm run test test
